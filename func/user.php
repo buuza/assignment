@@ -152,12 +152,11 @@ class Users {
     
     public function get_user_history(){
 		$this->connection = new mysqli(HOST_NAME, DB_USER, DB_PASS, DATABASE);
-    	//$s = "SELECT * FROM user_history WHERE username LIKE '".$_SESSION['username']."' order by Date ASC";
-    	$s = "select * from users";
-		if (!$this->connection->set_charset("utf8")) {
+    	$s = "SELECT * FROM user_history WHERE username LIKE '".$_SESSION['username']."' group by etf order by Date ASC";
+    	if (!$this->connection->set_charset("utf8")) {
 			$this->errors[] = $this->connection->error;
 		}//set chars to utf8
-		return $this->connection->query($s)->fetch_assoc();
+		return mysqli_fetch_all($this->connection->query($s));
     }
 }//class Users
 ?>

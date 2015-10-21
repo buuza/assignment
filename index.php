@@ -118,9 +118,10 @@ if($_GET['new_user']){
           <?php
           	//get all user history
 			$user_history = $user->get_user_history();
-			//while(){	
-			echo '<li><a href="?etf='.$user_history->ETF.'">'.strtoupper($user_history->ETF).'</a></li>';
-			//}
+			foreach($user_history as $key => $history){	
+						
+				echo '<li><a href="?etf='.$history[2].'">'.strtoupper($history[2]).'</a></li>';
+			}
 			?>          
             <li role="separator" class="divider"></li>
           </ul>
