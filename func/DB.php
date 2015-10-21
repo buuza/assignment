@@ -1,8 +1,8 @@
 <?php
-    define('HOST_NAME','db559501865.db.1and1.com');
-    define('DATABASE','db559501865');
-    define('DB_USER','dbo559501865');
-    define('DB_PASS','Henry226');
+    define('HOST_NAME','########');
+    define('DATABASE','########');
+    define('DB_USER','##########');
+    define('DB_PASS','##########');
 
 	$mysqli = new mysqli(HOST_NAME, DB_USER, DB_PASS, DATABASE);
 	if ($mysqli->connect_errno) {
