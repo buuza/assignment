@@ -159,9 +159,5 @@ class Users {
 		}//set chars to utf8
 		return $this->connection->query($s)->fetch_assoc();
     }
-    
-    function __destruct(){
-    	$this->connection->close();
-    }
 }//class Users
 ?>
