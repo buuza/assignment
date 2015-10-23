@@ -15,7 +15,9 @@ country_weight_html TEXT NOT NULL,
 weght_csv TEXT NOT NULL,
 sector_html TEXT NOT NULL,
 sector_csv TEXT NOT NULL,
-addedDateTime date
+name VARCHAR 50 NOT NULL,
+description TEXT,
+addedDateTime TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
 CREATE TABLE user_history(

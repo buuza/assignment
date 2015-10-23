@@ -32,12 +32,49 @@ class Parser{
     	}
 	    curl_close($ch);
 
+		//top 10 holdings		
+		preg_match("/<tbody>(.*)<\/tbody>/", $return, $tbl[0]);
+		//country weighting
+		preg_match("/<div class=\"diagram_block\".*[Other]*[^<\/div>]/", $return, $tbl[1]);
+		//sector weighting
+		preg_match("/Sector Weightings.*.+?(?=<\/ul><\/div><\/div>)/", $return, $tbl[2]);
 		
-		//preg_match("/<table class=\"holding\".(?s).*.[these]/", $return, $output_table[0]);
-		preg_match("/<tbody>(.*)<\/tbody>/", $return, $output_table[0]);
-		preg_match("/<div class=\"diagram_block\".*[Other]*[^<\/div>]/", $return, $output_table[1]);
-		preg_match("/Sector Weightings.*.+?(?=<\/ul><\/div><\/div>)/", $return, $output_table[2]);
+		$output_table['country_csv'] = parse_country($tbl[1][0]);
+		$output_table['sector_csv'] = parse_sector($tbl[2][0]);
+
 		
+		//delete class="" from html
+		$replace_class = "/ class=(.*?)[^\>]*/";
+		$output_table[0][0] = preg_replace($replace_class, "", $tbl[0][0]);
+		$output_table[1][0] = preg_replace($replace_class, "", $tbl[1][0]);
+		$output_table[2][0] = preg_replace($replace_class, "", $tbl[2][0]);
+		
+		//replace extra fields
+		$output_table[1][0] = preg_replace("/<\/li><li><span>(.*?)<\/span>/", "</li><li>", $output_table[1][0]);
+		$output_table[1][0] = preg_replace("/<p>/", "", $output_table[1][0]);
+		$output_table[1][0] = preg_replace("/<\/p>/", " ", $output_table[1][0]);
+		
+		//replace extra fields, p
+		$output_table[2][0] = preg_replace("/<\/li><li><span>(.*?)<\/span>/", "</li><li>", $output_table[2][0]);
+		$output_table[2][0] = preg_replace("/<p>/", "", $output_table[2][0]);
+		$output_table[2][0] = preg_replace("/<\/p>/", " ", $output_table[2][0]);
+		
+		//get ETF name and description
+		preg_match("/fund-title(.*)<\//", $return, $output_table['name']);
+		$output_table['name'] = etf_name($output_table['name'][0]);
+		
+		preg_match("/<MainText><p>(.*)(.*?)<\/p><\/MainText>/", $return, $output_table['d']);
+		if(empty($output_table['d'])){
+			unset($output_table['d']);
+			preg_match("/<p>Market Vectors<sup>(.*)(.*?)<\//", $return, $output_table['d']);
+		}
+		//get rid of <sup>
+		$output_table['desc'][1] = preg_replace("/<sup.*?<\/sup>/", "", $output_table['d'][1]);
+		
+		//if no response, either etf is not valid or time out occured, notify
+		if(empty($output_table[0][0]) && empty($output_table[1][0]) || empty($output_table)){
+			$output_table['error'] = $etf;
+		}
 		return $output_table;
 	}
 	
@@ -60,18 +97,23 @@ class Parser{
 			$val5 = ($row->find('td',5)->plaintext) ? '"'.$row->find('td',5)->plaintext.'",' : '';
 			$val6 = ($row->find('td',6)->plaintext) ? '"'.$row->find('td',6)->plaintext.'",' : '';
 			$val7 = ($row->find('td',7)->plaintext) ? '"'.$row->find('td',7)->plaintext.'"' : '';
+			$val8 = ($row->find('td',8)->plaintext) ? '"'.$row->find('td',8)->plaintext.'"' : '';
 
-			$table[] = $name.$val.$val2.$val3.$val4.$val5.$val6.$val7.PHP_EOL;
+			$table[] = $name.$val.$val2.$val3.$val4.$val5.$val6.$val7.$val8.PHP_EOL;
 		}
 		array_pop($table);
 		$csv = implode($table,"");
-
-		$country_chart = parse_country($data[1][0]);
-		$sector_chart = parse_sector($data[2][0]);
-		$response = store_html($etf, $data[0][0], $csv, $data[1][0], $country_chart, $data[2][0], $sector_chart);
+		$country_csv = $data['country_csv'];
+		$sector_csv = $data['sector_csv'];
+		$name = $data['name'];
+		
+		$description = $data['desc'][1];
+		
+		//$response = store_html($etf, $data[0][0], $csv, $data[1][0], $country_chart, $data[2][0], $sector_chart,$description,$name);
+		$response = store_html($etf, $data[0][0], $csv, $data[1][0], $country_csv, $data[2][0], $sector_csv,$description,$name);
 
 		if($response){
-			echo "ETF parsed and store in database.";
+			echo "ETF parsed and stored in the database.";
 		} else {
 			print_r($response);
 		}
@@ -79,18 +121,20 @@ class Parser{
 
 
 	//store all data to database
-	function store_html($etf,$html,$csv,$country_html,$country_csv,$sector_html,$sector_csv){
+	function store_html($etf,$html,$csv,$country_html,$country_csv,$sector_html,$sector_csv,$description,$name){
 		global $mysqli;
-		//$etf = mysqli_real_escape_string($etf);
-		//$html = mysqli_real_escape_string($html);
-		//$csv = mysqli_real_escape_string($csv);
-		//$country_html = mysqli_real_escape_string($country_html);
-		//$country_csv = mysqli_real_escape_string($country_csv);
-		//$sector_html = mysqli_real_escape_string($sector_html);
-		//$sector_csv = mysqli_real_escape_string($sector_csv);
+		$etf = $mysqli->real_escape_string($etf);
+		$html = $mysqli->real_escape_string($html);
+		$csv = $mysqli->real_escape_string($csv);
+		$country_html = $mysqli->real_escape_string($country_html);
+		$country_csv = $mysqli->real_escape_string($country_csv);
+		$sector_html = $mysqli->real_escape_string($sector_html);
+		$sector_csv = $mysqli->real_escape_string($sector_csv);
+		$name = $mysqli->real_escape_string($name);
+		$description = $mysqli->real_escape_string($description);
 
-		$result = $mysqli->query("INSERT INTO etf_data (ETF,html,csv,country_weight_html,weight_csv,sector_html,sector_csv,user_id) 
-				VALUES ('".strtoupper($etf)."','".$html."','".$csv."','".$country_html."','".$country_csv."','".$sector_html."','".$sector_csv."','".$user_id."')");
+		$result = $mysqli->query("INSERT INTO etf_data (ETF,html,csv,country_weight_html,weight_csv,sector_html,sector_csv,user_id,description,name) 
+				VALUES ('".strtoupper($etf)."','".$html."','".$csv."','".$country_html."','".$country_csv."','".$sector_html."','".$sector_csv."','".$user_id."','".$description."','".$name."')");
 		if($result->num_rows){
 			return True;
 		}
@@ -119,7 +163,7 @@ class Parser{
 			$name = $val->find('p',0)->plaintext;
 			$value = $val->find('span',1)->plaintext;
 
-			$string[] = $name.','.$value.PHP_EOL;
+			$string[] = '"'.$name.'",'.$value.PHP_EOL;
 		}
 		return implode($string,"");
 	}
@@ -135,9 +179,14 @@ class Parser{
 			$n = $val->find('p',0)->plaintext;
 			$v = $val->find('span',1)->plaintext;
 
-			$string2[] = $n.','.$v.PHP_EOL;
+			$string2[] = '"'.$n.'",'.$v.PHP_EOL;
 		}
 		return implode($string2,"");
+	}
+	
+	function etf_name($name){
+		preg_replace("/<sup.*?<\/sup>/", "", $name);
+		return substr(substr($name, 12),0, -2);
 	}
 	
 	function user_history(){

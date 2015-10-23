@@ -137,7 +137,6 @@ if($_GET['new_user']){
   </div><!-- /.container-fluid -->
 </nav>
 <?php
-
 	//user logged in
 	$class = new Parser();
 	$html = new simple_html_dom();
@@ -145,43 +144,62 @@ if($_GET['new_user']){
 	if(isset($_GET['etf'])){
 			
 		echo '<div class="container"';
-		echo "<br><br>ETF: ".$etf;
 		//sanitizing entered data
 		$etf = preg_replace('/[^a-zA-Z0-9 .-]/','',substr($_GET['etf'], 0, 4));
 		
-		$user->save_user_history($etf);
 		//determine whether new or exist in db
 		$response = if_etf_exist($etf);
+		//parse if it's not in the db
+		$data = $class->get_etf_data($etf);
+		//save user history
+		if(!$data['error'])
+			$user->save_user_history($etf);
 
 		//display accordingly
 		if($response){
 			echo "ETF data from Database:<br>";
+			echo "<h3>".$response->name."</h3>";
+			echo "<br>";
+			echo "<h4>: ".$response->description."</h4><br><br>";
 			echo '<table class="table">'.$response->html.'</table><br>';
 			echo '<table class="table">'.$response->country_weight_html.'</table><br>';
 			echo '<table class="table">'.$response->sector_html.'</table>';
 		} else {
-			$data = $class->get_etf_data($etf);
+			
+			if($data['error']){
+				echo "<br><br>";
+				echo '<div class="alert alert-danger" role="alert"><h4>'.strtoupper($etf).' is not valid or not available right now. Please try again later</h4></div>';
+			} else {	
+				echo "<h3>".$data['name']."</h3>";
+				echo "<br>";
+				echo "<h4>: ".$data['desc'][1]."</h4><br><br>";
 
-			echo 'New ETF data stored in database:<br><table class="table">';
-			print_r($data[0][0]);
-			echo '</table>';
+				echo '<table class="table">';
+				print_r($data[0][0]);
+				echo '</table>';
 
-			echo '<table class="table">';
-			print_r($data[1][0]);
-			echo '</table>';
-			echo '<br>';
-			echo '<table class="table">';
-			print_r($data[2][0]);
-			echo '</table>';
+				echo '<table class="table">';
+				print_r($data[1][0]);
+				echo '</table>';
+				echo '<br>';
+				echo '<table class="table">';
+				print_r($data[2][0]);
+				echo '</table>';
 
-			parse_top_10($data, $etf);
+				parse_top_10($data, $etf);
+				echo 'New ETF data stored in database:<br><table class="table">';
+			}
 		}
-		$etf = strtoupper($etf);
-		$file = file_get_contents("csv/".$etf.".csv");
-		if (empty($file)){
-			download_csv($etf);
-		}
-		echo '<a href="csv/'.$etf.'.csv">Download csv format '.$etf.'</a>';
+	
+			$etf = strtoupper($etf);
+			$file = file_get_contents("csv/".$etf.".csv");
+			if (empty($file)){
+				download_csv($etf);
+			}
+		if(!$data['error']){
+			echo '<a href="csv/'.$etf.'.csv">Download csv format '.$etf.'</a>';
+		}//no file - no link
+		//class container
 		echo '</div>';
 	}//get data
 }//if else
