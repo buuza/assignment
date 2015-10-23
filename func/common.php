@@ -147,8 +147,8 @@ class Parser{
 	function if_etf_exist($etf,$mysqli){
 		global $mysqli;
 		$res = $mysqli->query("SELECT * FROM etf_data WHERE ETF like '{$etf}'");
-		if(mysqli_num_rows($res) > 0){
-			return mysqli_fetch_object($res);
+		if($res->num_rows > 0){
+			return $res->fetch_object();
 		}
 		return False;
 	}
@@ -187,13 +187,6 @@ class Parser{
 	function etf_name($name){
 		preg_replace("/<sup.*?<\/sup>/", "", $name);
 		return substr(substr($name, 12),0, -2);
-	}
-	
-	function user_history(){
-		global $mysqli;
-		//$sql = "SELECT * FROM user_history WHERE username LIKE '".$_SESSION['username']."' order by Date ASC";
-		$sql = "SELECT * FROM user_history";
-		return $mysqli->query($sql)->fetch_object();
 	}
 	
 	function download_csv($etf){

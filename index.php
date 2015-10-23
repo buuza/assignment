@@ -5,6 +5,9 @@
 ?>
 <!DOCTYPE html>
 <head>
+
+<title><?php echo ($_GET['etf']) ? "Data for ".strtoupper($_GET['etf']) : "Test assignment"; ?></title>
+
 	<!-- Latest compiled and minified CSS -->
 	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
 	<style>
