@@ -108,7 +108,7 @@ if($_GET['new_user']){
         <span class="icon-bar"></span>
         <span class="icon-bar"></span>
       </button> 
-      <a class="navbar-brand" href="/">Hello <?php echo $_SESSION['username']?></a>
+      <a class="navbar-brand" href="/">Hello <?php echo ucfirst($_SESSION['username'])?></a>
     </div>
 
     <!-- Collect the nav links, forms, and other content for toggling -->
@@ -121,9 +121,8 @@ if($_GET['new_user']){
           <?php
           	//get all user history
 			$user_history = $user->get_user_history();
-			foreach($user_history as $key => $history){	
-						
-				echo '<li><a href="?etf='.$history[2].'">'.strtoupper($history[2]).'</a></li>';
+			foreach($user_history as $key => $hist){
+				echo '<li><a href="?etf='.$hist->ETF.'">'.strtoupper($hist->ETF).'</a></li>';
 			}
 			?>          
             <li role="separator" class="divider"></li>
@@ -148,7 +147,7 @@ if($_GET['new_user']){
 			
 		echo '<div class="container"';
 		//sanitizing entered data
-		$etf = preg_replace('/[^a-zA-Z0-9 .-]/','',substr($_GET['etf'], 0, 4));
+		$etf = trim(preg_replace('/[^a-zA-Z0-9 .-]/','',substr($_GET['etf'], 0, 4)));
 		
 		//determine whether new or exist in db
 		$response = if_etf_exist($etf);
@@ -199,7 +198,7 @@ if($_GET['new_user']){
 			if (empty($file)){
 				download_csv($etf);
 			}
-		if(!$data['error']){
+		if(empty($data['error'])){
 			echo '<a href="csv/'.$etf.'.csv">Download csv format '.$etf.'</a>';
 		}//no file - no link
 		//class container

@@ -11,6 +11,9 @@ class Users {
 	public $messages = array();
 	
 	function __construct(){
+		//connect to database
+		$this->connection = new mysqli(HOST_NAME, DB_USER, DB_PASS, DATABASE);
+	
 		//determine the operation
 		if (isset($_POST["login"])) {
             $this->login();
@@ -36,10 +39,21 @@ class Users {
         } elseif (!empty($_POST['username']) && !empty($_POST['password'])) {        
 			$this->username = filter_var($_POST['username'], FILTER_SANITIZE_STRING);			
         	
-        	$this->connection = new mysqli(HOST_NAME, DB_USER, DB_PASS, DATABASE);
+        	//$this->connection = new mysqli(HOST_NAME, DB_USER, DB_PASS, DATABASE);
 			//get username info
-			$result = $this->connection->query("SELECT * FROM users WHERE username LIKE '".$this->username."' OR email LIKE '".$this->username."'");
-        	$user_info = $result->fetch_object();
+			//$result = $this->connection->query("SELECT * FROM users WHERE username = '".$this->username."' OR email = '".$this->username."'");
+			
+			//prepared statement to login user
+			$sel = "SELECT * FROM users WHERE username = ? OR email = ? ";
+        	if($stmt = $this->connection->prepare($sel)){
+        		$stmt->bind_param("ss", $this->username, $this->username);
+        		$stmt->execute();
+        		//$stmt->bind_result();
+        		$res = $stmt->get_result();
+        		$user_info = $res->fetch_object();
+        	}
+			
+        	//$user_info = $result->fetch_object();
 						
 			if (password_verify($_POST['password'], $user_info->password)) {
 				$_SESSION['username'] = $user_info->username;
@@ -69,7 +83,7 @@ class Users {
 			$this->errors[] = "Email is not valid.";
 		}// validation to be continued
 		
-		$this->connection = new mysqli(HOST_NAME, DB_USER, DB_PASS, DATABASE);
+		//$this->connection = new mysqli(HOST_NAME, DB_USER, DB_PASS, DATABASE);
 		if (!$this->connection->set_charset("utf8")) {
 			$this->errors[] = $this->connection->error;
 		}//set chars to utf8
@@ -83,29 +97,39 @@ class Users {
 		$user_password_hash = password_hash($password, PASSWORD_DEFAULT);
 		
 		//check if user already exist
-		$sql = "SELECT * FROM users WHERE username LIKE '".$this->username."' OR email LIKE '".$this->email."' ";
-		$check_user = $this->connection->query($sql);
+		//$sql = "SELECT * FROM users WHERE username = '".$this->username."' OR email = '".$this->email."' ";
+		//$check_user = $this->connection->query($sql);
+		$sql = "SELECT * FROM users WHERE username = ? OR email = ? ";
+		if($stmt = $this->connection->prepare($sql)){
+			$stmt->bind_param("ss", $this->username, $this->email);
+			$stmt->execute();
+			$check_user = $stmt->num_rows;
+		}
 		
 		if (!$this->connection->connect_errno){
 
-			if($check_user->num_rows > 0){
+			//if($check_user->num_rows > 0){
+			if($check_user > 0){
 				//raise error if duplicate entry
 				$this->errors[] = "Sorry, Username or Email already taken.";	
 			} else {
-				$insert = "INSERT INTO users (username, name, password, email)
-					VALUES ('".$this->username."','".$this->name."','".$user_password_hash."','".$this->email."')";
-				
-				$query_new_user_insert = $this->connection->query($insert);
-				
-				if($query_new_user_insert){
-					$this->messages[] = "Your account has created successfully.";
-					$_SESSION['username'] = $this->username;
-					$_SESSION['email'] = $this->email;
-					$_SESSION['user_login_status'] = 1;
+				//prepare statement to insert new user data, validation and sanitation is done by Prepare
+				$insert = "INSERT INTO users (username, name, password, email) VALUES (?, ?, ?, ?)";
+					
+				if($stmt->prepare($insert)){
+					$stmt->bind_param("ssss", $this->username, $this->name, $user_password_hash, $this->email);
+					if($stmt->execute()){//returns False on failure
+						$this->messages[] = "Your account has created successfully.";
+						$_SESSION['username'] = $this->username;
+						$_SESSION['email'] = $this->email;
+						$_SESSION['user_login_status'] = 1;
+					} else {
+						$this->errors[] = "Sorry, registration failed, please try again.";
+					}//query execute failed
 				} else {
-					$this->errors[] = "Sorry, registration failed, please try again.";
-				}
-			} 
+					$this->errors[] = "Sorry, connection to database lost.";
+				}//query prepare failed
+			}//else 
 		} else {
 			$this->errors = "No database connection.";
 		}//no connection to database
@@ -134,29 +158,28 @@ class Users {
         return false;
     }
     
-    public function save_user_history($etf){
-    	$this->connection = new mysqli(HOST_NAME, DB_USER, DB_PASS, DATABASE);
-    	$check = "SELECT * FROM user_history WHERE username LIKE ".$_SESSION['username']." and ETF LIKE '".$etf."'";
-    	$this->connection->query($check);
-    	if($this->connection->num_rows > 0){
-    		$query = "UPDATE user_history SET Date = '".date("Y-m-d H:i:s")."' WHERE username LIKE '".$_SESSION['username']."' and ETF like '".$etf."'";
-    	} else {
-    		$query = "INSERT INTO user_history (username, ETF) VALUES ('".$_SESSION['username']."','".$etf."')";
-		
-			if (!$this->connection->set_charset("utf8")) {
-				$this->errors[] = $this->connection->error;
-			}//set chars to utf8
-		}
-		$this->connection->query($query);
-    }
+    public function save_user_history($etf){    	
+    	//prepare statement and store user history
+    	$query = "INSERT INTO user_history (username, ETF) VALUES (?, ?)";
+    	if($insert = $this->connection->prepare($query)){
+    		$insert->bind_param("ss", $_SESSION['username'], $etf);
+    		$insert->execute();
+    	}
+
+    }//store user search in db
     
     public function get_user_history(){
-		$this->connection = new mysqli(HOST_NAME, DB_USER, DB_PASS, DATABASE);
-    	$s = "SELECT * FROM user_history WHERE username LIKE '".$_SESSION['username']."' group by etf order by Date ASC";
-    	if (!$this->connection->set_charset("utf8")) {
-			$this->errors[] = $this->connection->error;
-		}//set chars to utf8
-		return mysqli_fetch_all($this->connection->query($s));
+    	$s = "SELECT * FROM user_history WHERE username = ? group by ETF order by Date ASC";
+    	if($stmt = $this->connection->prepare($s)){
+    		$stmt->bind_param("s", $_SESSION['username']);
+    		$stmt->execute();
+    		$res = $stmt->get_result();
+    		while($row = $res->fetch_object()){
+    			$history[] = $row;
+    		}
+    		return $history;
+    	}
+    	   	
     }
 }//class Users
 ?>

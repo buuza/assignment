@@ -115,6 +115,7 @@ class Parser{
 		if($response){
 			echo "ETF parsed and stored in the database.";
 		} else {
+			echo "ETF failed";
 			print_r($response);
 		}
 	}//parse top 10 table
@@ -123,19 +124,27 @@ class Parser{
 	//store all data to database
 	function store_html($etf,$html,$csv,$country_html,$country_csv,$sector_html,$sector_csv,$description,$name){
 		global $mysqli;
-		$etf = $mysqli->real_escape_string($etf);
-		$html = $mysqli->real_escape_string($html);
-		$csv = $mysqli->real_escape_string($csv);
-		$country_html = $mysqli->real_escape_string($country_html);
-		$country_csv = $mysqli->real_escape_string($country_csv);
-		$sector_html = $mysqli->real_escape_string($sector_html);
-		$sector_csv = $mysqli->real_escape_string($sector_csv);
-		$name = $mysqli->real_escape_string($name);
-		$description = $mysqli->real_escape_string($description);
-
-		$result = $mysqli->query("INSERT INTO etf_data (ETF,html,csv,country_weight_html,weight_csv,sector_html,sector_csv,user_id,description,name) 
-				VALUES ('".strtoupper($etf)."','".$html."','".$csv."','".$country_html."','".$country_csv."','".$sector_html."','".$sector_csv."','".$user_id."','".$description."','".$name."')");
-		if($result->num_rows){
+	
+		$query = "INSERT INTO etf_data (ETF, html, csv, country_weight_html, weight_csv, sector_html, sector_csv, description, name) VALUES (?,?,?,?,?,?,?,?,?)";
+		if($stmt = $mysqli->prepare($query)){
+		
+			echo "INSERT STATEMENT!!!!";
+		
+			$stmt->bind_param("sssssssss", $etf, $html, $csv, $country_html, $country_csv, $sector_html, $sector_csv, $description, $name);
+			
+			$etf = $mysqli->real_escape_string($etf);
+			$html = $mysqli->real_escape_string($html);
+			$csv = $mysqli->real_escape_string($csv);
+			$country_html = $mysqli->real_escape_string($country_html);
+			$country_csv = $mysqli->real_escape_string($country_csv);
+			$sector_html = $mysqli->real_escape_string($sector_html);
+			$sector_csv = $mysqli->real_escape_string($sector_csv);
+			$name = $mysqli->real_escape_string($name);
+			$description = $mysqli->real_escape_string($description);
+			
+			var_dump($stmt);
+			
+			$stmt->execute();
 			return True;
 		}
 		return False;
@@ -146,8 +155,11 @@ class Parser{
 	 */
 	function if_etf_exist($etf,$mysqli){
 		global $mysqli;
-		$res = $mysqli->query("SELECT * FROM etf_data WHERE ETF like '{$etf}'");
-		if($res->num_rows > 0){
+		if($stmt = $mysqli->prepare("SELECT * FROM etf_data WHERE ETF = ? ")){
+			$stmt->bind_param("s", $etf);
+			$stmt->execute();
+			$res = $stmt->get_result();
+			$stmt->close();
 			return $res->fetch_object();
 		}
 		return False;
@@ -191,11 +203,16 @@ class Parser{
 	
 	function download_csv($etf){
 		global $mysqli;
-		$etf = strtoupper($etf);
-		$select = "SELECT csv, weight_csv, sector_csv FROM etf_data WHERE ETF LIKE '".$etf."'";
-		$res = $mysqli->query($select)->fetch_object();
-		$file = $res->csv."\n".$res->weight_csv."\n".$res->sector_csv;
-		file_put_contents("csv/".$etf.".csv", print_r($file, true));
+		$select = "SELECT csv, weight_csv, sector_csv FROM etf_data WHERE ETF = ? ";
+		if($csv = $mysqli->prepare($select)){
+			$csv->bind_param("s", $etf);
+			$csv->execute();
+			$res = $csv->get_result();
+			$row = $res->fetch_object();
+			$file = $row->csv."\n".$row->weight_csv."\n".$row->sector_csv;
+			file_put_contents("csv/".strtoupper($etf).".csv", print_r($file, true));
+			$csv->close();
+		}
 	}
 	
 ?>
