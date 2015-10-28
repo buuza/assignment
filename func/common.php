@@ -109,14 +109,12 @@ class Parser{
 		
 		$description = $data['desc'][1];
 		
-		//$response = store_html($etf, $data[0][0], $csv, $data[1][0], $country_chart, $data[2][0], $sector_chart,$description,$name);
 		$response = store_html($etf, $data[0][0], $csv, $data[1][0], $country_csv, $data[2][0], $sector_csv,$description,$name);
 
 		if($response){
-			echo "ETF parsed and stored in the database.";
+			echo '<div class="alert alert-success" role="alert">ETF parsed and stored in the database.</div>';
 		} else {
-			echo "ETF failed";
-			print_r($response);
+			echo '<div class="alert alert-danger" role="alert">Error while adding ETF</div>';
 		}
 	}//parse top 10 table
 
@@ -127,9 +125,7 @@ class Parser{
 	
 		$query = "INSERT INTO etf_data (ETF, html, csv, country_weight_html, weight_csv, sector_html, sector_csv, description, name) VALUES (?,?,?,?,?,?,?,?,?)";
 		if($stmt = $mysqli->prepare($query)){
-		
-			echo "INSERT STATEMENT!!!!";
-		
+				
 			$stmt->bind_param("sssssssss", $etf, $html, $csv, $country_html, $country_csv, $sector_html, $sector_csv, $description, $name);
 			
 			$etf = $mysqli->real_escape_string($etf);
@@ -141,10 +137,9 @@ class Parser{
 			$sector_csv = $mysqli->real_escape_string($sector_csv);
 			$name = $mysqli->real_escape_string($name);
 			$description = $mysqli->real_escape_string($description);
-			
-			var_dump($stmt);
-			
+						
 			$stmt->execute();
+			$stmt->close();
 			return True;
 		}
 		return False;
@@ -209,8 +204,10 @@ class Parser{
 			$csv->execute();
 			$res = $csv->get_result();
 			$row = $res->fetch_object();
-			$file = $row->csv."\n".$row->weight_csv."\n".$row->sector_csv;
-			file_put_contents("csv/".strtoupper($etf).".csv", print_r($file, true));
+			if(!empty($row)){
+				$file = $row->csv."\n".$row->weight_csv."\n".$row->sector_csv;
+				file_put_contents("csv/".strtoupper($etf).".csv", print_r($file, true));
+			}
 			$csv->close();
 		}
 	}

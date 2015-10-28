@@ -189,7 +189,6 @@ if($_GET['new_user']){
 				echo '</table>';
 
 				parse_top_10($data, $etf);
-				echo 'New ETF data stored in database:<br><table class="table">';
 			}
 		}
 	

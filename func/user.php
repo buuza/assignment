@@ -39,10 +39,6 @@ class Users {
         } elseif (!empty($_POST['username']) && !empty($_POST['password'])) {        
 			$this->username = filter_var($_POST['username'], FILTER_SANITIZE_STRING);			
         	
-        	//$this->connection = new mysqli(HOST_NAME, DB_USER, DB_PASS, DATABASE);
-			//get username info
-			//$result = $this->connection->query("SELECT * FROM users WHERE username = '".$this->username."' OR email = '".$this->username."'");
-			
 			//prepared statement to login user
 			$sel = "SELECT * FROM users WHERE username = ? OR email = ? ";
         	if($stmt = $this->connection->prepare($sel)){
@@ -52,9 +48,7 @@ class Users {
         		$res = $stmt->get_result();
         		$user_info = $res->fetch_object();
         	}
-			
-        	//$user_info = $result->fetch_object();
-						
+									
 			if (password_verify($_POST['password'], $user_info->password)) {
 				$_SESSION['username'] = $user_info->username;
 				$_SESSION['email'] = $user_info->email;
@@ -97,8 +91,6 @@ class Users {
 		$user_password_hash = password_hash($password, PASSWORD_DEFAULT);
 		
 		//check if user already exist
-		//$sql = "SELECT * FROM users WHERE username = '".$this->username."' OR email = '".$this->email."' ";
-		//$check_user = $this->connection->query($sql);
 		$sql = "SELECT * FROM users WHERE username = ? OR email = ? ";
 		if($stmt = $this->connection->prepare($sql)){
 			$stmt->bind_param("ss", $this->username, $this->email);
