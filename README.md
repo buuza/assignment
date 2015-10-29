@@ -8,3 +8,6 @@ Fixed user search history<br>
 Display tables fixed<br>
 Error warned if ETF not valid or not accessible<br>
 etc.
+
+Upd:
+Security improvement. Mysqli Prepared statement added
